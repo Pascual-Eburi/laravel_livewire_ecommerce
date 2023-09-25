@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('sellers', function (Blueprint $table) {
             $table->id();
-            $table->text('address');
+            $table->text('address')->nullable();
             $table->string('payment_method')->nullable();
             $table->string('payment_email')->nullable();
             $table->timestamps();
