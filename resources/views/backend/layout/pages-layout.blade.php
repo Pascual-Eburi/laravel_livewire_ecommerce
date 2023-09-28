@@ -9,19 +9,19 @@
     <link
         rel="apple-touch-icon"
         sizes="180x180"
-        href="vendors/images/apple-touch-icon.png"
+        href="backend/vendors/images/apple-touch-icon.png"
     />
     <link
         rel="icon"
         type="image/png"
         sizes="32x32"
-        href="vendors/images/favicon-32x32.png"
+        href="backend/vendors/images/favicon-32x32.png"
     />
     <link
         rel="icon"
         type="image/png"
         sizes="16x16"
-        href="vendors/images/favicon-16x16.png"
+        href="backend/vendors/images/favicon-16x16.png"
     />
 
     <!-- Mobile Specific Metas -->
@@ -36,29 +36,29 @@
         rel="stylesheet"
     />
     <!-- CSS -->
-    <link rel="stylesheet" type="text/css" href="vendors/styles/core.css" />
+    <link rel="stylesheet" type="text/css" href="backend/vendors/styles/core.css" />
     <link
         rel="stylesheet"
         type="text/css"
-        href="vendors/styles/icon-font.min.css"
+        href="backend/vendors/styles/icon-font.min.css"
     />
-    <link rel="stylesheet" type="text/css" href="vendors/styles/style.css" />
+    <link rel="stylesheet" type="text/css" href="backend/vendors/styles/style.css" />
 
     @stack('stylesheets');
 </head>
 <body>
 <!-- preloader -->
-<x-preloader></x-preloader>
+<x-backend.preloader />
 <!-- end preloader -->
 
 <!-- header -->
-<x-header />
+<x-backend.navigation.header />
 <!-- end header -->
 <!-- right sidebar -->
-<x-right-sidebar />
+<x-backend.navigation.right-sidebar />
 <!-- end right sidebar -->
 <!-- left sidebar -->
-<x-left-sidebar />
+<x-backend.navigation.left-sidebar />
 <!-- end left sidebar -->
 
 <div class="mobile-menu-overlay"></div>
@@ -115,13 +115,13 @@
     </div>
 </div>
 <!-- welcome modal start -->
-<x-welcome-modal />
+<x-backend.modals.welcome-modal />
 <!-- welcome modal end -->
 <!-- js -->
-<script src="vendors/scripts/core.js"></script>
-<script src="vendors/scripts/script.min.js"></script>
-<script src="vendors/scripts/process.js"></script>
-<script src="vendors/scripts/layout-settings.js"></script>
+<script src="backend/vendors/scripts/core.js"></script>
+<script src="backend/vendors/scripts/script.min.js"></script>
+<script src="backend/vendors/scripts/process.js"></script>
+<script src="backend/vendors/scripts/layout-settings.js"></script>
 @stack('scripts');
 </body>
 </html>
