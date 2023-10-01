@@ -4,14 +4,26 @@
 
     <div class="login-box bg-white box-shadow border-radius-10">
         <div class="login-title">
-            <h2 class="text-center text-primary">Login To DeskApp</h2>
+            <h2 class="text-center text-primary">Login To Your Account</h2>
         </div>
-        <form>
+        <form method="POST" action="{{route('auth.login')}}">
+            @if(Session::get('fail'))
+                <div class="alert alert-warning">
+                    {{ Session::get('fail') }}
+                    <button class="close" type="button" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            @endif
+            @csrf
+
             <div class="input-group custom">
                 <input
                     type="text"
                     class="form-control form-control-lg"
-                    placeholder="Username"
+                    placeholder="Username or Email"
+                    name="login_id"
+                    value="{{ old('login_id') }}"
                 />
                 <div class="input-group-append custom">
                                             <span class="input-group-text"
@@ -19,11 +31,19 @@
                                                 ></span>
                 </div>
             </div>
+                @error('login_id')
+                    <div class="d-block text-danger" style="margin-top: -25px; margin-bottom: 15px;">
+                        {{ $message }}
+                    </div>
+                @enderror
+
             <div class="input-group custom">
                 <input
                     type="password"
                     class="form-control form-control-lg"
                     placeholder="**********"
+                    name="password"
+                    value="{{ old('password') }}"
                 />
                 <div class="input-group-append custom">
                                             <span class="input-group-text"
@@ -31,6 +51,11 @@
                                                 ></span>
                 </div>
             </div>
+                @error('password')
+                <div class="d-block text-danger" style="margin-top: -25px; margin-bottom: 15px;">
+                    {{ $message }}
+                </div>
+                @enderror
             <div class="row pb-30">
                 <div class="col-6">
                     <div class="custom-control custom-checkbox">
@@ -53,28 +78,8 @@
             <div class="row">
                 <div class="col-sm-12">
                     <div class="input-group mb-0">
-                        <!--
-                        use code for form submit
                         <input class="btn btn-primary btn-lg btn-block" type="submit" value="Sign In">
-                    -->
-                        <a
-                            class="btn btn-primary btn-lg btn-block"
-                            href="index.html"
-                        >Sign In</a
-                        >
-                    </div>
-                    <div
-                        class="font-16 weight-600 pt-10 pb-10 text-center"
-                        data-color="#707373"
-                    >
-                        OR
-                    </div>
-                    <div class="input-group mb-0">
-                        <a
-                            class="btn btn-outline-primary btn-lg btn-block"
-                            href="register.html"
-                        >Register To Create Account</a
-                        >
+
                     </div>
                 </div>
             </div>
