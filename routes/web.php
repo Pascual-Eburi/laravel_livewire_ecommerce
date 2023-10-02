@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\UserController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -20,7 +20,8 @@ Route::get('/', function () {
 
 Route::view('login', 'backend.pages.auth.login');
 Route::prefix('auth')->name('auth.')->group( function (){
-    Route::post('login', [UserController::class, 'login']);
+    Route::post('/login', [UserController::class, 'login'])
+            ->name('loginHandler');
 });
 
 
