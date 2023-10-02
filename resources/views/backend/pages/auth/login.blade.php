@@ -6,7 +6,7 @@
         <div class="login-title">
             <h2 class="text-center text-primary">Login To Your Account</h2>
         </div>
-        <form method="POST" action="{{route('auth.login')}}">
+        <form method="POST" action="{{ route('auth.loginHandler') }}">
             @if(Session::get('fail'))
                 <div class="alert alert-warning">
                     {{ Session::get('fail') }}
