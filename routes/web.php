@@ -22,6 +22,9 @@ Route::view('login', 'backend.pages.auth.login')->name('login');
 Route::prefix('auth')->name('auth.')->group( function (){
     Route::post('/login', [UserController::class, 'login'])
             ->name('loginHandler');
+
+    Route::post('/logout', [UserController::class, 'logout'])
+            ->name('logoutHandler');
 });
 
 
