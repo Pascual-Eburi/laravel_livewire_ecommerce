@@ -13,19 +13,22 @@ use App\Http\Controllers\UserController;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', 'auth/login');
+Route::redirect('/login', 'auth/login');
 
-
-Route::view('login', 'backend.pages.auth.login')->name('login');
-Route::prefix('auth')->name('auth.')->group( function (){
+/**
+ * Auth routes
+ */
+Route::middleware('PreventBackHistory')->prefix('auth')->name('auth.')->group( function (){
+    Route::view('/login', 'backend.pages.auth.login')->name('login');
     Route::post('/login', [UserController::class, 'login'])
             ->name('loginHandler');
-
     Route::post('/logout', [UserController::class, 'logout'])
             ->name('logoutHandler');
 });
 
 
-Route::view('/home', 'home')->name('home');
+Route::middleware(['auth', 'PreventBackHistory'])->group( function (){
+    Route::view('/home', 'home')->name('home');
+
+});
