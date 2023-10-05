@@ -43,7 +43,7 @@
         href="/backend/vendors/styles/icon-font.min.css"
     />
     <link rel="stylesheet" type="text/css" href="/backend/vendors/styles/style.css" />
-    @stack('stylesheets');
+    @stack('stylesheets')
 
 </head>
 <body class="login-page">
@@ -54,7 +54,7 @@
     <div class="container">
         <div class="row align-items-center">
             <div class="col-md-6 col-lg-7">
-                <img src="/backend/vendors/images/login-page-img.png" alt="" />
+                @yield('image')
             </div>
             <div class="col-md-6 col-lg-5">
                 @yield('content')
@@ -69,7 +69,7 @@
 <script src="/backend/vendors/scripts/script.min.js"></script>
 <script src="/backend/vendors/scripts/process.js"></script>
 <script src="/backend/vendors/scripts/layout-settings.js"></script>
-@stack('scripts');
+@stack('scripts')
 </body>
 </html>
 
