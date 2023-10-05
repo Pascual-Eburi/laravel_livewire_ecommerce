@@ -20,11 +20,19 @@ Route::redirect('/login', 'auth/login');
  * Auth routes
  */
 Route::middleware('PreventBackHistory')->prefix('auth')->name('auth.')->group( function (){
-    Route::view('/login', 'backend.pages.auth.login')->name('login');
+    Route::view('/login', 'backend.pages.auth.login')
+        ->name('login');
     Route::post('/login', [UserController::class, 'login'])
             ->name('loginHandler');
     Route::post('/logout', [UserController::class, 'logout'])
             ->name('logoutHandler');
+
+    Route::view('/forgot-password', 'backend.pages.auth.forgot_password')
+            ->name('forgotPassword');
+    Route::post('/send_password_reset_link', [UserController::class, 'sendPasswordResetLink'])
+            ->name('sendPasswordResetLink');
+
+    Route::get('/password/reset/{token}', [UserController::class, 'resetPassword'])->name('resetPassword');
 });
 
 
