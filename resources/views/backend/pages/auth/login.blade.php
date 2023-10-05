@@ -1,5 +1,8 @@
 @extends('backend.layout.auth-layout')
 @section('PageTitle', $pageTitle ?? 'Login')
+@section('image')
+    <img src="/backend/vendors/images/login-page-img.png" alt="" />
+@endsection
 @section('content')
 
     <div class="login-box bg-white box-shadow border-radius-10">
@@ -8,16 +11,13 @@
         </div>
         <form method="POST" action="{{ route('auth.loginHandler') }}">
             @if(Session::get('fail'))
-                <div class="alert alert-warning">
-                    {{ Session::get('fail') }}
-                    <button class="close" type="button" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
+                <x-backend.notification.alert type='warning'
+                    message="{{ Session::get('fail') }}"
+                />
             @endif
             @csrf
 
-            <div class="input-group custom">
+            <div class="input-group custom @error('login_id') form-control-danger @enderror">
                 <input
                     type="text"
                     class="form-control form-control-lg"
@@ -71,7 +71,7 @@
                 </div>
                 <div class="col-6">
                     <div class="forgot-password">
-                        <a href="forgot-password.html">Forgot Password</a>
+                        <a href="{{ route('auth.forgotPassword') }}">Forgot Password</a>
                     </div>
                 </div>
             </div>
