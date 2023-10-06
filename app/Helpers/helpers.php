@@ -14,18 +14,6 @@ if ( !function_exists('sendEmail') ){
      */
     function sendEmail(array $emailConfig ): bool
     {
-        /*require 'vendor/PHPMailer/PHPMailer/src/Exception.php';
-
-        require 'vendor/PHPMailer/PHPMailer/src/PHPMailer.php';
-        require 'vendor/PHPMailer/PHPMailer/src/SMTP.php';
-        $phpmailer = new PHPMailer();
-$phpmailer->isSMTP();
-$phpmailer->Host = 'sandbox.smtp.mailtrap.io';
-$phpmailer->SMTPAuth = true;
-$phpmailer->Port = 2525;
-$phpmailer->Username = '845af91ff93a71';
-$phpmailer->Password = 'ffccc6fcb01863';
-        */
 
         $email = new PHPMailer( TRUE );
         $email->SMTPDebug = 0;
