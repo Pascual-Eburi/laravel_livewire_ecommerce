@@ -15,6 +15,9 @@
                     message="{{ Session::get('fail') }}"
                 />
             @endif
+            @if(Session::get('success'))
+                <x-backend.notification.alert type='success' message="{{ Session::get('success') }}" />
+            @endif
             @csrf
 
             <div class="input-group custom @error('login_id') form-control-danger @enderror">
