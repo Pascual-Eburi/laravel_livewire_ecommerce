@@ -33,6 +33,10 @@ Route::middleware('PreventBackHistory')->prefix('auth')->name('auth.')->group( f
             ->name('sendPasswordResetLink');
 
     Route::get('/password/reset/{token}', [UserController::class, 'resetPassword'])->name('resetPassword');
+
+    Route::post('/reset_password', [UserController::class, 'resetPasswordHandler'])->name('resetPasswordHandler');
+
+
 });
 
 
