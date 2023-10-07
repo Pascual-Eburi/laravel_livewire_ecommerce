@@ -15,7 +15,7 @@
             @endif
 
             @if(Session::get('success'))
-                <x-backend.notification.alert type='success' message="{{ Session::get('message') }}" />
+                <x-backend.notification.alert type='success' message="{{ Session::get('success') }}" />
             @endif
 
             @csrf
