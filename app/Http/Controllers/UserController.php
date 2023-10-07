@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Foundation\Application;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-use ConstGuards;
+# use ConstGuards;
 use ConstDefaults;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,13 +17,15 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use PHPMailer\PHPMailer\Exception;
 
+
 class UserController extends Controller
 {
     //
-    private $rules = [
+    private array $rules = [
         'email' => 'required|email|exists:users,email',
         'username' =>'required|exists:users,username',
         'password' =>'required|min:5|max:45',
+        'new_password' => 'required|min:5|max:45|required_with:password_confirm|same:password_confirm'
     ];
 
     /**
@@ -45,12 +49,12 @@ class UserController extends Controller
         ]);
 
         //
-        $logid_data = [
+        $login_data = [
             $login_id => $request->login_id, // login_id => email | username
             'password' => $request->password
         ];
 
-        if ( Auth::attempt($logid_data)){
+        if ( Auth::attempt($login_data)){
             return redirect()->route('home');
         }
 
@@ -102,35 +106,148 @@ class UserController extends Controller
             'body' => $email_body
         ];
 
-        if ( sendEmail($emailConfig) ) {
-            // if found token, then update, else, insert new token
-            if ($old_token){
-                DB::table('password_reset_tokens')
-                    ->where('email', $request->email)
-                    ->update([
-                        'token' => $token,
-                        'created_at' => Carbon::now()
-                    ]);
-            }else {
-                DB::table('password_reset_tokens')
-                    ->insert([
-                        'email' => $request->email,
-                        'token' => $token,
-                        'created_at' => Carbon::now()
-                    ]);
-            }
-
-            session()->flash('success', 'We have send you the link');
-        }else {
+        if ( !sendEmail($emailConfig) ) {
             session()->flash('fail', 'Something went wrong!!');
+            return redirect()->route('auth.forgotPassword');
         }
 
+        // the email has been sent successfully
+        // if found token, then update, else, insert new token
+        if ($old_token){
+            DB::table('password_reset_tokens')
+                ->where('email', $request->email)
+                ->update([
+                    'token' => $token,
+                    'created_at' => Carbon::now()
+                ]);
+        }else {
+            DB::table('password_reset_tokens')
+                ->insert([
+                    'email' => $request->email,
+                    'token' => $token,
+                    'created_at' => Carbon::now()
+                ]);
+        }
+
+        session()->flash('success', 'We have send you the link');
         return redirect()->route('auth.forgotPassword');
     }
 
-    public function resetPassword(Request $request){
+    /**
+     * Validate a token requested for reset password link
+     * @param string|null $token
+     * @return array
+     */
+    public function validate_token(string $token = null): array
+    {
+        $result = array('valid' => false, 'message' => '');
+
+        $check_token = DB::table('password_reset_tokens')
+            ->where(['token' => $token])
+            ->first();
+
+        if (!$check_token){
+            $result['message'] = 'Invalid token!, request another link';
+            return $result;
+        }
+
+        $diff_minutes = Carbon::createFromFormat(
+                    'Y-m-d H:i:s', $check_token->created_at
+                    )->diffInMinutes( Carbon::now());
+
+        if ($diff_minutes > ConstDefaults::tokenExpiredMinutes){
+            $result['message'] = 'Token expired!, request another link';
+            return $result;
+        }
+
+        $result['valid'] = true;
+        return $result;
 
     }
+
+
+    /**
+     * @param Request $request
+     * @param string $token
+     * @return Factory|Application|\Illuminate\Contracts\View\View|RedirectResponse|\Illuminate\Contracts\Foundation\Application
+     */
+    public function resetPassword(Request $request, string $token): Factory|Application|\Illuminate\Contracts\View\View|RedirectResponse|\Illuminate\Contracts\Foundation\Application
+    {
+
+        // check token and validate token
+        $valid_token_result = $this->validate_token($token);
+        if (!$valid_token_result['valid']){
+            session()->flash('fail', $valid_token_result['message']);
+            return redirect()->route('auth.forgotPassword', ['token' => $token]);
+        }
+
+        // ok, the token is valid
+        return view('backend.pages.auth.reset_password')->with(['token' => $token]);
+    }
+
+
+    /**
+     * @throws Exception
+     */
+    public function resetPasswordHandler(Request $request){
+        $request->validate([
+            'new_password' => $this->rules['new_password'],
+            'password_confirm' => 'required'
+        ]);
+
+        $user_token = DB::table('password_reset_tokens')
+                        ->where(['token' => $request->token])->first();
+
+        $user = User::where('email', $user_token->email )->first();
+
+        if (!$user_token || !$user){
+            session()->flash('fail', 'Token invalid!, please, request another link');
+            return redirect()->route('auth.forgotPassword');
+        }
+
+        // ok, Update user password
+        $updated = User::where('email', $user->email)->update([
+            'password' => Hash::make( $request->new_password),
+        ]);
+
+        if (!$updated){
+            session()->flash('fail', 'We could not update your password!!');
+            return redirect()->route('auth.forgotPassword',
+                ['token' => $request->token]);
+        }
+
+        // Delete token record
+        DB::table('password_reset_tokens')
+                ->where([ 'email' => $user->email, 'token' => $request->token
+                ])->delete();
+
+        // Send email to notify user
+        $data = [
+            'user' => $user,
+            'login_link' => route('auth.login')
+        ];
+
+        $email_body = view('email-templates.reset_password_notification', $data)->render();
+
+        $email_config = [
+            'from_email' => env('EMAIL_FROM_ADDRESS'),
+            'from_name' => env('EMAIL_FROM_NAME'),
+            'recipient_email' => $user->email,
+            'recipient_name' => $user->first_name . ' '. $user->last_name,
+            'subject' => 'Password Changed',
+            'body' => $email_body
+        ];
+
+        if ( !sendEmail($email_config)) {
+            return redirect()->route('auth.login')
+                ->with('fail', 'Password changed. You can login, But we could not sent a confirmation email!!');
+        }
+
+        return redirect()->route('auth.login')
+            ->with('success', 'Done!, Password changed. Use new password to login');
+
+    }
+
 
     /**
      * @param Request $request
