@@ -3,23 +3,23 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
-# use ConstGuards;
-use ConstDefaults;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
 use PHPMailer\PHPMailer\Exception;
 
+use App\Services\AuthService;
+use App\Services\PasswordResetService;
+use App\Services\EmailService;
 
-class UserController extends Controller
-{
+class UserController extends Controller {
     //
     private array $rules = [
         'email' => 'required|email|exists:users,email',
@@ -27,14 +27,27 @@ class UserController extends Controller
         'password' =>'required|min:5|max:45',
         'new_password' => 'required|min:5|max:45|required_with:password_confirm|same:password_confirm'
     ];
+    private AuthService $authService;
+    private PasswordResetService $passwordResetService;
+    private EmailService $emailService;
+
+    public function __construct(
+        AuthService $authService,
+        PasswordResetService $passwordResetService,
+        EmailService $emailService
+    ) {
+        $this->authService = $authService;
+        $this->passwordResetService = $passwordResetService;
+        $this->emailService = $emailService;
+    }
 
     /**
      * @param Request $request
      * @return RedirectResponse
      */
-    public  function  login (Request $request): RedirectResponse
+    final public function login (Request $request): RedirectResponse
     {
-        // check if user login with email or username
+        // check if user is login with email or username
         $login_id = filter_var($request->login_id, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
         // validate data
@@ -49,12 +62,13 @@ class UserController extends Controller
         ]);
 
         //
-        $login_data = [
+        $loginData = [
             $login_id => $request->login_id, // login_id => email | username
             'password' => $request->password
         ];
 
-        if ( Auth::attempt($login_data)){
+
+        if ($this->authService->attemptLogin($loginData)) {
             return redirect()->route('home');
         }
 
@@ -68,19 +82,16 @@ class UserController extends Controller
      */
     public function sendPasswordResetLink(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => $this->rules['email']
-        ]);
+        $request->validate([ 'email' => $this->rules['email'] ]);
+
         // get the user
         $user = User::where('email', $request->email)->first();
 
         // generate token
-        $token = base64_encode( Str::random(64) );
+        $token = $this->passwordResetService->generateResetToken($request->email);
 
         // check for old tokens
-        $old_token = DB::table('password_reset_tokens')
-                    ->where('email', $request->email)
-                    ->first();
+        $old_token = $this->passwordResetService->getOldToken($request->email);
 
         // generate reset link
         $reset_link = route('auth.resetPassword', [
@@ -88,94 +99,36 @@ class UserController extends Controller
             'email' => $request->email
         ]);
 
-        $data = [
-            'reset_link' => $reset_link,
-            'user' => $user,
-            'tokenExpiredMinutes' => ConstDefaults::tokenExpiredMinutes
-        ];
+        $email_sent = $this->emailService->sendPasswordResetEmail($user, $reset_link);
 
-        $email_body = view('email-templates.forgot_password', $data)
-                        ->render();
-
-        $emailConfig = [
-            'from_email' => env('EMAIL_FROM_ADDRESS'),
-            'from_name' => env('EMAIL_FROM_NAME'),
-            'recipient_email' => $user->email,
-            'recipient_name' => $user->first_name . ' '. $user->last_name,
-            'subject' => 'Reset Password',
-            'body' => $email_body
-        ];
-
-        if ( !sendEmail($emailConfig) ) {
-            session()->flash('fail', 'Something went wrong!!');
+        if ( !$email_sent ) {
+            session()->flash('fail', 'We could´t sent you the email!!');
             return redirect()->route('auth.forgotPassword');
         }
 
         // the email has been sent successfully
         // if found token, then update, else, insert new token
         if ($old_token){
-            DB::table('password_reset_tokens')
-                ->where('email', $request->email)
-                ->update([
-                    'token' => $token,
-                    'created_at' => Carbon::now()
-                ]);
+            $this->passwordResetService->updateToken($token, $request->email);
         }else {
-            DB::table('password_reset_tokens')
-                ->insert([
-                    'email' => $request->email,
-                    'token' => $token,
-                    'created_at' => Carbon::now()
-                ]);
+            $this->passwordResetService->insertToken($token, $request->email);
         }
 
         session()->flash('success', 'We have send you the link');
         return redirect()->route('auth.forgotPassword');
     }
 
-    /**
-     * Validate a token requested for reset password link
-     * @param string|null $token
-     * @return array
-     */
-    public function validate_token(string $token = null): array
-    {
-        $result = array('valid' => false, 'message' => '');
-
-        $check_token = DB::table('password_reset_tokens')
-            ->where(['token' => $token])
-            ->first();
-
-        if (!$check_token){
-            $result['message'] = 'Invalid token!, request another link';
-            return $result;
-        }
-
-        $diff_minutes = Carbon::createFromFormat(
-                    'Y-m-d H:i:s', $check_token->created_at
-                    )->diffInMinutes( Carbon::now());
-
-        if ($diff_minutes > ConstDefaults::tokenExpiredMinutes){
-            $result['message'] = 'Token expired!, request another link';
-            return $result;
-        }
-
-        $result['valid'] = true;
-        return $result;
-
-    }
-
 
     /**
      * @param Request $request
      * @param string $token
-     * @return Factory|Application|\Illuminate\Contracts\View\View|RedirectResponse|\Illuminate\Contracts\Foundation\Application
+     * @return Factory|Application|View|RedirectResponse|\Illuminate\Contracts\Foundation\Application
      */
-    public function resetPassword(Request $request, string $token): Factory|Application|\Illuminate\Contracts\View\View|RedirectResponse|\Illuminate\Contracts\Foundation\Application
+    public function resetPassword(Request $request, string $token): Factory|Application|View|RedirectResponse|\Illuminate\Contracts\Foundation\Application
     {
 
         // check token and validate token
-        $valid_token_result = $this->validate_token($token);
+        $valid_token_result = $this->passwordResetService->validateToken($token);
         if (!$valid_token_result['valid']){
             session()->flash('fail', $valid_token_result['message']);
             return redirect()->route('auth.forgotPassword', ['token' => $token]);
@@ -187,9 +140,12 @@ class UserController extends Controller
 
 
     /**
+     * @param Request $request
+     * @return RedirectResponse
      * @throws Exception
      */
-    public function resetPasswordHandler(Request $request){
+    public function resetPasswordHandler(Request $request): RedirectResponse
+    {
         $request->validate([
             'new_password' => $this->rules['new_password'],
             'password_confirm' => 'required'
@@ -217,28 +173,12 @@ class UserController extends Controller
         }
 
         // Delete token record
-        DB::table('password_reset_tokens')
-                ->where([ 'email' => $user->email, 'token' => $request->token
-                ])->delete();
+        $this->passwordResetService->deleteTokenRecord($user->email, $request->token);
 
-        // Send email to notify user
-        $data = [
-            'user' => $user,
-            'login_link' => route('auth.login')
-        ];
+        // send email
+        $email_sent = $this->emailService->sendPasswordChangedEmail($user);
 
-        $email_body = view('email-templates.reset_password_notification', $data)->render();
-
-        $email_config = [
-            'from_email' => env('EMAIL_FROM_ADDRESS'),
-            'from_name' => env('EMAIL_FROM_NAME'),
-            'recipient_email' => $user->email,
-            'recipient_name' => $user->first_name . ' '. $user->last_name,
-            'subject' => 'Password Changed',
-            'body' => $email_body
-        ];
-
-        if ( !sendEmail($email_config)) {
+        if ( !$email_sent) {
             return redirect()->route('auth.login')
                 ->with('fail', 'Password changed. You can login, But we could not sent a confirmation email!!');
         }
@@ -256,6 +196,8 @@ class UserController extends Controller
     public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         session()->flash('fail', 'Your are logged out');
         return redirect()->route('auth.login');
     }
